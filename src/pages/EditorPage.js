@@ -129,7 +129,7 @@ const EditorPage = () => {
     const location = useLocation();
     const { roomId } = useParams();
     const reactNavigator = useNavigate();
-    
+
     const [clients, setClients] = useState([]);
     const [socket, setSocket] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -234,6 +234,7 @@ const EditorPage = () => {
                 socketRef.current.off(ACTIONS.DISCONNECTED);
             }
         };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []); // Empty dependency array means the socket connection is created exactly once
 
     const handleLanguageSelect = (langId) => {
@@ -279,7 +280,6 @@ const EditorPage = () => {
 
         const codeToRun = codeRef.current || '';
 
-        // All languages (including JS/NodeJS) are compiled on the server via proxy
         try {
             const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
             const response = await fetch(`${backendUrl}/compile`, {
@@ -332,13 +332,13 @@ const EditorPage = () => {
                         <div className="logoWrapper">
                             <span className="logoText">Nex<span className="logoAccent">IDE</span></span>
                         </div>
-                        
+
                         <div className="langSelectContainer">
                             <label className="langSelectLabel">Language</label>
-                            
+
                             {/* Premium Custom Dropdown Language Selector */}
                             <div className="customSelectWrapper" ref={dropdownRef}>
-                                <button 
+                                <button
                                     className={`customSelectBtn ${isSelectOpen ? 'active' : ''}`}
                                     onClick={() => setIsSelectOpen(!isSelectOpen)}
                                 >
@@ -348,12 +348,12 @@ const EditorPage = () => {
                                     </span>
                                     <span className="customSelectArrow"></span>
                                 </button>
-                                
+
                                 {isSelectOpen && (
                                     <div className="customSelectDropdown">
                                         {languagesList.map(lang => (
-                                            <div 
-                                                key={lang.id} 
+                                            <div
+                                                key={lang.id}
                                                 className={`customSelectOption ${language === lang.id ? 'selected' : ''}`}
                                                 onClick={() => handleLanguageSelect(lang.id)}
                                             >
@@ -379,7 +379,11 @@ const EditorPage = () => {
                     <button className="btn runBtn" onClick={runCode} disabled={isRunning}>
                         {isRunning ? 'Running...' : 'Run Code'}
                     </button>
-                    <button className="btn copyBtn" onClick={() => setIsConsoleOpen(!isConsoleOpen)} style={{ marginBottom: '10px', background: 'rgba(99, 102, 241, 0.15)', border: '1px solid rgba(99, 102, 241, 0.3)', color: '#a78bfa' }}>
+                    <button
+                        className="btn copyBtn"
+                        onClick={() => setIsConsoleOpen(!isConsoleOpen)}
+                        style={{ marginBottom: '10px', background: 'rgba(99, 102, 241, 0.15)', border: '1px solid rgba(99, 102, 241, 0.3)', color: '#a78bfa' }}
+                    >
                         {isConsoleOpen ? 'Hide Console' : 'Show Console'}
                     </button>
                     <button className="btn copyBtn" onClick={copyRoomId}>
@@ -399,7 +403,7 @@ const EditorPage = () => {
                             codeRef.current = code;
                         }}
                     />
-                    
+
                     {/* Console / Output Runner Panel */}
                     {isConsoleOpen && (
                         <div className="consolePanel">
