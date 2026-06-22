@@ -38,6 +38,20 @@ app.post('/compile', async (req, res) => {
         compiler = 'cpython-3.14.0';
     } else if (language === 'java') {
         compiler = 'openjdk-jdk-21+35';
+    } else if (language === 'cs') {
+        compiler = 'dotnetcore-8.0.402';
+    } else if (language === 'rust') {
+        compiler = 'rust-1.82.0';
+    } else if (language === 'go') {
+        compiler = 'go-1.23.2';
+    } else if (language === 'php') {
+        compiler = 'php-8.3.12';
+    } else if (language === 'ruby') {
+        compiler = 'ruby-3.4.9';
+    } else if (language === 'swift') {
+        compiler = 'swift-6.0.1';
+    } else if (language === 'js') {
+        compiler = 'nodejs-20.17.0';
     } else {
         return res.status(400).json({ error: 'Unsupported language for compilation' });
     }
@@ -112,6 +126,11 @@ io.on('connection', (socket) => {
 
     socket.on(ACTIONS.SYNC_CODE, ({ socketId, code }) => {
         io.to(socketId).emit(ACTIONS.CODE_CHANGE, { code });
+    });
+
+    // Sync language to a specific newly joined socket only
+    socket.on(ACTIONS.SYNC_LANGUAGE, ({ socketId, language }) => {
+        io.to(socketId).emit(ACTIONS.LANGUAGE_CHANGE, { language });
     });
 
     socket.on(ACTIONS.LANGUAGE_CHANGE, ({ roomId, language }) => {

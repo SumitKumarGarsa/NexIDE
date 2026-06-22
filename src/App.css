@@ -339,8 +339,22 @@ footer .devName {
     background: #14151f;
 }
 
+.editorContainer {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.editorContainer > .CodeMirror {
+    flex: 1;
+    height: 100%;
+}
+
 .CodeMirror {
     flex: 1;
+    height: 100% !important;
     font-size: 15px;
     font-family: 'Fira Code', 'Cascadia Code', monospace;
     line-height: 1.6;

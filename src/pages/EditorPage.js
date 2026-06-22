@@ -8,7 +8,6 @@ import { initSocket } from '../socket';
 import {
     useLocation,
     useNavigate,
-    Navigate,
     useParams,
 } from 'react-router-dom';
 
@@ -134,7 +133,7 @@ const EditorPage = () => {
     const [clients, setClients] = useState([]);
     const [socket, setSocket] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [isConsoleOpen, setIsConsoleOpen] = useState(false);
+    const [isConsoleOpen, setIsConsoleOpen] = useState(true);
     const [logs, setLogs] = useState([]);
     const [isRunning, setIsRunning] = useState(false);
     const [language, setLanguage] = useState('js');
@@ -187,28 +186,30 @@ const EditorPage = () => {
                     if (username !== location.state?.username) {
                         toast.success(`${username} joined the room.`);
                         console.log(`${username} joined`);
-                        
-                        // Sync current language with the newly joined user using ref
-                        socketRef.current.emit(ACTIONS.LANGUAGE_CHANGE, {
-                            roomId,
+
+                        // Sync current code to the newly joined user specifically
+                        socketRef.current.emit(ACTIONS.SYNC_CODE, {
+                            code: codeRef.current,
+                            socketId,
+                        });
+                        // Sync current language to the newly joined user specifically
+                        socketRef.current.emit(ACTIONS.SYNC_LANGUAGE, {
                             language: langRef.current,
+                            socketId,
                         });
                     } else {
                         // Dismiss loader once the local client has joined successfully
                         setLoading(false);
                     }
                     setClients(clients);
-                    socketRef.current.emit(ACTIONS.SYNC_CODE, {
-                        code: codeRef.current,
-                        socketId,
-                    });
                 }
             );
 
-            // Listen for collaborative language changes
-            socketRef.current.on(ACTIONS.LANGUAGE_CHANGE, ({ language }) => {
-                setLanguage(language);
-                toast.success(`Editor language switched to ${getLanguageDisplayName(language)}`);
+            // Listen for collaborative language changes from other users
+            socketRef.current.on(ACTIONS.LANGUAGE_CHANGE, ({ language: newLang }) => {
+                setLanguage(newLang);
+                langRef.current = newLang;
+                toast.success(`Editor language switched to ${getLanguageDisplayName(newLang)}`);
             });
 
             // Listening for disconnected
@@ -377,6 +378,9 @@ const EditorPage = () => {
                     </div>
                     <button className="btn runBtn" onClick={runCode} disabled={isRunning}>
                         {isRunning ? 'Running...' : 'Run Code'}
+                    </button>
+                    <button className="btn copyBtn" onClick={() => setIsConsoleOpen(!isConsoleOpen)} style={{ marginBottom: '10px', background: 'rgba(99, 102, 241, 0.15)', border: '1px solid rgba(99, 102, 241, 0.3)', color: '#a78bfa' }}>
+                        {isConsoleOpen ? 'Hide Console' : 'Show Console'}
                     </button>
                     <button className="btn copyBtn" onClick={copyRoomId}>
                         Copy ROOM ID
