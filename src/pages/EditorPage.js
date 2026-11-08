@@ -4,10 +4,11 @@ import ACTIONS from '../Actions';
 import Client from '../components/Client';
 import Editor from '../components/Editor';
 import Preloader from '../components/Preloader';
-import { initSocket } from '../socket';
+import { initSocket, getBackendUrl } from '../socket';
 import {
     useLocation,
     useNavigate,
+    Navigate,
     useParams,
 } from 'react-router-dom';
 
@@ -232,6 +233,8 @@ const EditorPage = () => {
                 socketRef.current.off(ACTIONS.JOINED);
                 socketRef.current.off(ACTIONS.LANGUAGE_CHANGE);
                 socketRef.current.off(ACTIONS.DISCONNECTED);
+                socketRef.current.off('connect_error');
+                socketRef.current.off('connect_failed');
             }
         };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -281,7 +284,7 @@ const EditorPage = () => {
         const codeToRun = codeRef.current || '';
 
         try {
-            const backendUrl = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
+            const backendUrl = getBackendUrl();
             const response = await fetch(`${backendUrl}/compile`, {
                 method: 'POST',
                 headers: {
@@ -322,6 +325,10 @@ const EditorPage = () => {
             setIsRunning(false);
         }
     };
+
+    if (!location.state) {
+        return <Navigate to="/" />;
+    }
 
     return (
         <>

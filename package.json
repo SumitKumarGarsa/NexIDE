@@ -20,6 +20,7 @@
     "web-vitals": "^2.1.4"
   },
   "scripts": {
+    "dev": "concurrently \"npm run server:dev\" \"npm run start:front\"",
     "start:front": "react-scripts start",
     "start": "npm run build && npm run server:prod",
     "build": "react-scripts build",
@@ -47,6 +48,7 @@
     ]
   },
   "devDependencies": {
+    "concurrently": "^10.0.7",
     "nodemon": "^2.0.15"
   }
 }
