@@ -186,7 +186,7 @@ const EditorPage = () => {
 
         const init = async () => {
             try {
-                const s = await initSocket();
+                const s = await initSocket(roomId, currentUsername);
                 if (!isMounted) return;
                 socketRef.current = s;
                 setSocket(s);

@@ -1,4 +1,5 @@
 import { io } from 'socket.io-client';
+import { P2PRoom } from './p2pSocket';
 
 export const getBackendUrl = () => {
     if (process.env.REACT_APP_BACKEND_URL) {
@@ -9,38 +10,29 @@ export const getBackendUrl = () => {
         if (window.location.port === '3000') {
             return `http://${window.location.hostname}:5000`;
         }
-        // In production or when served by express backend, connect to the same host
-        return window.location.origin;
     }
-    return 'http://localhost:5000';
+    return null;
 };
 
-export const isBackendConfigured = () => {
-    if (process.env.REACT_APP_BACKEND_URL) {
-        return true;
-    }
-    if (typeof window !== 'undefined') {
-        // Localhost development has local server.js
-        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-            return true;
-        }
-        // When deployed on Vercel and REACT_APP_BACKEND_URL is missing
-        if (window.location.hostname.endsWith('vercel.app')) {
-            return false;
-        }
-    }
-    return true;
-};
-
-export const initSocket = async () => {
+export const initSocket = async (roomId, username) => {
     const backendUrl = getBackendUrl();
-    const options = {
-        'force new connection': true,
-        reconnectionAttempts: 5,
-        reconnectionDelay: 1000,
-        reconnectionDelayMax: 5000,
-        timeout: 20000,
-        transports: ['websocket', 'polling'],
-    };
-    return io(backendUrl, options);
+
+    // If explicit backend URL is provided (e.g. localhost dev or deployed backend), use Socket.IO
+    if (backendUrl) {
+        try {
+            const options = {
+                'force new connection': true,
+                reconnectionAttempts: 2,
+                timeout: 3000,
+                transports: ['websocket', 'polling'],
+            };
+            return io(backendUrl, options);
+        } catch (err) {
+            console.warn('Socket.IO connection failed, using P2P WebRTC fallback:', err);
+        }
+    }
+
+    // Default on Vercel: use direct peer-to-peer WebRTC collaboration!
+    // No backend deployment or server setup required.
+    return new P2PRoom(roomId, username);
 };
