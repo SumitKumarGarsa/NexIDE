@@ -4,11 +4,10 @@ import ACTIONS from '../Actions';
 import Client from '../components/Client';
 import Editor from '../components/Editor';
 import Preloader from '../components/Preloader';
-import { initSocket, getBackendUrl, isBackendConfigured } from '../socket';
+import { initSocket, getBackendUrl } from '../socket';
 import {
     useLocation,
     useNavigate,
-    Navigate,
     useParams,
 } from 'react-router-dom';
 
