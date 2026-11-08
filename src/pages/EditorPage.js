@@ -131,7 +131,23 @@ const EditorPage = () => {
     const { roomId } = useParams();
     const reactNavigator = useNavigate();
 
-    const [clients, setClients] = useState([]);
+    // Current username with fallback to session or friendly default
+    const currentUsername = useRef(
+        location.state?.username ||
+        (typeof window !== 'undefined' ? sessionStorage.getItem('nexide_username') : null) ||
+        ('Coder_' + Math.floor(100 + Math.random() * 900))
+    ).current;
+
+    useEffect(() => {
+        if (location.state?.username && typeof window !== 'undefined') {
+            sessionStorage.setItem('nexide_username', location.state.username);
+        }
+    }, [location.state]);
+
+    // Initialize with local user so their card is immediately present
+    const [clients, setClients] = useState([
+        { socketId: 'local', username: currentUsername }
+    ]);
     const [socket, setSocket] = useState(null);
     const [loading, setLoading] = useState(true);
     const [isConsoleOpen, setIsConsoleOpen] = useState(true);
@@ -162,51 +178,43 @@ const EditorPage = () => {
     }, []);
 
     useEffect(() => {
+        let isMounted = true;
+
+        // Auto-dismiss preloader within 1.5s so the workspace is immediately usable
+        const readyTimer = setTimeout(() => {
+            if (isMounted) setLoading(false);
+        }, 1500);
+
         const init = async () => {
-            const s = await initSocket();
-            socketRef.current = s;
-            setSocket(s);
+            try {
+                const s = await initSocket();
+                if (!isMounted) return;
+                socketRef.current = s;
+                setSocket(s);
 
-            let retryCount = 0;
-            const maxRetries = 10;
-
-            s.on('connect', () => {
-                retryCount = 0;
-                s.emit(ACTIONS.JOIN, {
-                    roomId,
-                    username: location.state?.username,
+                s.on('connect', () => {
+                    clearTimeout(readyTimer);
+                    if (isMounted) setLoading(false);
+                    s.emit(ACTIONS.JOIN, {
+                        roomId,
+                        username: currentUsername,
+                    });
                 });
-            });
 
-            s.on('connect_error', (err) => {
-                retryCount++;
-                console.warn(`Socket connection attempt ${retryCount}/${maxRetries} failed:`, err.message);
-                if (retryCount === 1) {
-                    toast('Connecting to backend (waking up free server if sleeping)...', { icon: '⏳', duration: 6000 });
-                }
-                if (retryCount >= maxRetries) {
-                    if (!isBackendConfigured()) {
-                        toast.error(
-                            'Backend URL not set: real-time editing requires REACT_APP_BACKEND_URL in Vercel settings.',
-                            { duration: 7000 }
-                        );
-                    } else {
-                        toast.error('Socket connection failed. Please ensure your backend server is running and awake.');
-                    }
-                    reactNavigator('/');
-                }
-            });
+                s.on('connect_error', () => {
+                    // Graceful fallback to standalone workspace mode without kicking user out
+                    if (isMounted) setLoading(false);
+                });
 
-            s.on('connect_failed', () => {
-                toast.error('Socket connection failed, try again later.');
-                reactNavigator('/');
-            });
+                s.on('connect_failed', () => {
+                    if (isMounted) setLoading(false);
+                });
 
             // Listening for joined event
             socketRef.current.on(
                 ACTIONS.JOINED,
                 ({ clients, username, socketId }) => {
-                    if (username !== location.state?.username) {
+                    if (username !== currentUsername) {
                         toast.success(`${username} joined the room.`);
                         console.log(`${username} joined`);
 
@@ -247,14 +255,20 @@ const EditorPage = () => {
                     });
                 }
             );
+            } catch (err) {
+                if (isMounted) setLoading(false);
+            }
         };
         init();
         return () => {
+            isMounted = false;
+            clearTimeout(readyTimer);
             if (socketRef.current) {
                 socketRef.current.disconnect();
                 socketRef.current.off(ACTIONS.JOINED);
                 socketRef.current.off(ACTIONS.LANGUAGE_CHANGE);
                 socketRef.current.off(ACTIONS.DISCONNECTED);
+                socketRef.current.off('connect');
                 socketRef.current.off('connect_error');
                 socketRef.current.off('connect_failed');
             }
@@ -390,9 +404,7 @@ const EditorPage = () => {
         }
     };
 
-    if (!location.state) {
-        return <Navigate to="/" />;
-    }
+    
 
     return (
         <>
