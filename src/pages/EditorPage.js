@@ -4,7 +4,7 @@ import ACTIONS from '../Actions';
 import Client from '../components/Client';
 import Editor from '../components/Editor';
 import Preloader from '../components/Preloader';
-import { initSocket, getBackendUrl } from '../socket';
+import { initSocket, getBackendUrl, isBackendConfigured } from '../socket';
 import {
     useLocation,
     useNavigate,
@@ -166,18 +166,37 @@ const EditorPage = () => {
             const s = await initSocket();
             socketRef.current = s;
             setSocket(s);
-            s.on('connect_error', (err) => handleErrors(err));
-            s.on('connect_failed', (err) => handleErrors(err));
 
-            function handleErrors(e) {
-                console.log('socket error', e);
+            let retryCount = 0;
+            const maxRetries = 4;
+
+            s.on('connect', () => {
+                retryCount = 0;
+                s.emit(ACTIONS.JOIN, {
+                    roomId,
+                    username: location.state?.username,
+                });
+            });
+
+            s.on('connect_error', (err) => {
+                retryCount++;
+                console.warn(`Socket connection attempt ${retryCount}/${maxRetries} failed:`, err.message);
+                if (retryCount >= maxRetries) {
+                    if (!isBackendConfigured()) {
+                        toast.error(
+                            'Backend URL not set: real-time editing requires REACT_APP_BACKEND_URL in Vercel settings.',
+                            { duration: 7000 }
+                        );
+                    } else {
+                        toast.error('Socket connection failed. Please ensure your backend server is running.');
+                    }
+                    reactNavigator('/');
+                }
+            });
+
+            s.on('connect_failed', () => {
                 toast.error('Socket connection failed, try again later.');
                 reactNavigator('/');
-            }
-
-            socketRef.current.emit(ACTIONS.JOIN, {
-                roomId,
-                username: location.state?.username,
             });
 
             // Listening for joined event
@@ -285,20 +304,62 @@ const EditorPage = () => {
 
         try {
             const backendUrl = getBackendUrl();
-            const response = await fetch(`${backendUrl}/compile`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    code: codeToRun,
-                    language: language,
-                    input: stdin,
-                }),
-            });
+            let data;
+            try {
+                const response = await fetch(`${backendUrl}/compile`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        code: codeToRun,
+                        language: language,
+                        input: stdin,
+                    }),
+                });
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                data = await response.json();
+            } catch (proxyErr) {
+                console.warn('Backend /compile unavailable, executing directly via Wandbox API:', proxyErr);
+                const compilerMap = {
+                    cpp: 'gcc-13.2.0',
+                    c: 'gcc-13.2.0-c',
+                    py: 'cpython-3.14.0',
+                    java: 'openjdk-jdk-21+35',
+                    cs: 'dotnetcore-8.0.402',
+                    rust: 'rust-1.82.0',
+                    go: 'go-1.23.2',
+                    php: 'php-8.3.12',
+                    ruby: 'ruby-3.4.9',
+                    swift: 'swift-6.0.1',
+                    js: 'nodejs-20.17.0',
+                };
+                const compiler = compilerMap[language];
+                if (!compiler) throw proxyErr;
 
-            const data = await response.json();
-            console.log('Compiler Proxy Response:', data);
+                const wandboxRes = await fetch('https://wandbox.org/api/compile.json', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        compiler,
+                        code: codeToRun,
+                        stdin: stdin || '',
+                    }),
+                });
+                const wandboxData = await wandboxRes.json();
+                data = {};
+                if (wandboxData.compiler_error) {
+                    data.error = wandboxData.compiler_error;
+                } else if (wandboxData.program_error) {
+                    data.error = wandboxData.program_error;
+                } else if (wandboxData.program_output) {
+                    data.output = wandboxData.program_output;
+                } else {
+                    data.output = '';
+                }
+            }
+
+            console.log('Compiler Response:', data);
 
             const consoleLogs = [];
             if (data.error) {

@@ -2,12 +2,15 @@ import React, { useState } from 'react';
 import { v4 as uuidV4 } from 'uuid';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
+import { isBackendConfigured } from '../socket';
 
 const Home = () => {
     const navigate = useNavigate();
 
     const [roomId, setRoomId] = useState('');
     const [username, setUsername] = useState('');
+    const hasBackend = isBackendConfigured();
+
     const createNewRoom = (e) => {
         e.preventDefault();
         const id = uuidV4();
@@ -19,6 +22,13 @@ const Home = () => {
         if (!roomId || !username) {
             toast.error('ROOM ID & username is required');
             return;
+        }
+
+        if (!hasBackend) {
+            toast.error(
+                'Vercel deployment: REACT_APP_BACKEND_URL is not set. Please deploy the backend server and configure the environment variable in Vercel.',
+                { duration: 7000 }
+            );
         }
 
         // Redirect
@@ -34,6 +44,7 @@ const Home = () => {
             joinRoom();
         }
     };
+
     return (
         <div className="homePageWrapper">
             <div className="formWrapper">
@@ -71,6 +82,22 @@ const Home = () => {
                             new room
                         </button>
                     </span>
+
+                    {!hasBackend && (
+                        <div style={{
+                            marginTop: '16px',
+                            padding: '10px 14px',
+                            background: 'rgba(239, 68, 68, 0.12)',
+                            border: '1px solid rgba(239, 68, 68, 0.3)',
+                            borderRadius: '8px',
+                            color: '#fca5a5',
+                            fontSize: '12px',
+                            lineHeight: '1.5',
+                            textAlign: 'left'
+                        }}>
+                            ⚠️ <strong>Backend URL missing:</strong> Real-time collaboration requires a live Socket.IO server. Please set <code>REACT_APP_BACKEND_URL</code> in your Vercel project settings.
+                        </div>
+                    )}
                 </div>
             </div>
             <footer>
