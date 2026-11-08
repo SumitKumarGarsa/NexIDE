@@ -92,8 +92,16 @@ app.post('/compile', async (req, res) => {
     }
 });
 
+app.get('/health', (req, res) => {
+    res.status(200).json({ status: 'ok', message: 'NexIDE Socket.IO server is live and healthy' });
+});
+
 app.use((req, res, next) => {
-    res.sendFile(path.join(__dirname, 'build', 'index.html'));
+    const indexPath = path.join(__dirname, 'build', 'index.html');
+    if (fs.existsSync(indexPath)) {
+        return res.sendFile(indexPath);
+    }
+    res.status(200).send('NexIDE Socket.IO Backend Server is live and healthy.');
 });
 
 const userSocketMap = {};

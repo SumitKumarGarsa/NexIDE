@@ -168,7 +168,7 @@ const EditorPage = () => {
             setSocket(s);
 
             let retryCount = 0;
-            const maxRetries = 4;
+            const maxRetries = 10;
 
             s.on('connect', () => {
                 retryCount = 0;
@@ -181,6 +181,9 @@ const EditorPage = () => {
             s.on('connect_error', (err) => {
                 retryCount++;
                 console.warn(`Socket connection attempt ${retryCount}/${maxRetries} failed:`, err.message);
+                if (retryCount === 1) {
+                    toast('Connecting to backend (waking up free server if sleeping)...', { icon: '⏳', duration: 6000 });
+                }
                 if (retryCount >= maxRetries) {
                     if (!isBackendConfigured()) {
                         toast.error(
@@ -188,7 +191,7 @@ const EditorPage = () => {
                             { duration: 7000 }
                         );
                     } else {
-                        toast.error('Socket connection failed. Please ensure your backend server is running.');
+                        toast.error('Socket connection failed. Please ensure your backend server is running and awake.');
                     }
                     reactNavigator('/');
                 }
